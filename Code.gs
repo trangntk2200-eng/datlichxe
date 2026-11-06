@@ -1,16 +1,57 @@
 /* Chạy setup() một lần trước khi triển khai ứng dụng web. */
+var BOOKING_HEADERS = ['Mã đăng ký', 'Ngày tập', 'Giờ tập', 'Học viên', 'Thầy', 'Hạng xe', 'Biển số xe', 'Mã xe', 'Mã khung giờ', 'Thời điểm đăng ký'];
+function vehiclePlate(category, name) {
+  var prefix = category + ' · ';
+  name = String(name || '');
+  return name.indexOf(prefix) === 0 ? name.slice(prefix.length) : name;
+}
+function bookingToRow(booking) {
+  return [booking.id, booking.date, booking.start + ' – ' + booking.end, booking.name, booking.teacher, booking.category, vehiclePlate(booking.category, booking.vehicleName), booking.vehicleId, booking.slotId, booking.createdAt];
+}
+function readBookings(sheet) {
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, BOOKING_HEADERS.length).getValues().filter(function(row) { return row[0]; }).map(function(row) {
+    var times = String(row[2]).split(' – ');
+    return {id:String(row[0]), date:row[1] instanceof Date ? Utilities.formatDate(row[1], 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') : String(row[1]), start:times[0] || '', end:times[1] || '', name:String(row[3]), teacher:String(row[4]), category:String(row[5]), vehicleName:String(row[6]), vehicleId:String(row[7]), slotId:String(row[8]), createdAt:row[9] instanceof Date ? row[9].toISOString() : String(row[9] || '')};
+  });
+}
+function appendBookings(sheet, bookings) {
+  if (!bookings.length) return;
+  sheet.getRange(sheet.getLastRow() + 1, 1, bookings.length, BOOKING_HEADERS.length).setValues(bookings.map(bookingToRow));
+}
+function deleteBookingRow(sheet, id) {
+  if (sheet.getLastRow() < 2) return;
+  var ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) sheet.deleteRow(i + 2);
+}
 function setup() {
   var p = PropertiesService.getScriptProperties();
   if (!p.getProperty('DATA_FILE_ID')) {
     var vehicles = [];
     ['B.01', 'B', 'C1'].forEach(function(c, j) {
-      for (var i = 1; i <= (j === 0 ? 5 : 7); i++) vehicles.push({id: Utilities.getUuid(), category: c, name: c + ' · Xe ' + ('0' + i).slice(-2)});
+      for (var i = 1; i <= (j === 0 ? 5 : 7); i++) vehicles.push({id: Utilities.getUuid(), category: c, name: 'Xe ' + ('0' + i).slice(-2)});
     });
     var file = DriveApp.createFile('dat-lich-xe.json', JSON.stringify({vehicles: vehicles, slots: [{id:'s1', start:'06:00', end:'07:00'}, {id:'s2', start:'07:00', end:'08:00'}], bookings: []}), MimeType.PLAIN_TEXT);
     p.setProperty('DATA_FILE_ID', file.getId());
   }
+  var dataFile = DriveApp.getFileById(p.getProperty('DATA_FILE_ID'));
+  var db = JSON.parse(dataFile.getBlob().getDataAsString());
+  db.vehicles = db.vehicles.map(function(v) { return {id:v.id, category:v.category, name:vehiclePlate(v.category, v.name)}; });
+  if (!p.getProperty('BOOKING_SHEET_ID')) {
+    var spreadsheet = SpreadsheetApp.create('Lịch đăng ký tập xe Chiến Thắng');
+    var sheet = spreadsheet.getSheets()[0];
+    sheet.setName('Đăng ký');
+    sheet.getRange(1, 1, 1, BOOKING_HEADERS.length).setValues([BOOKING_HEADERS]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    appendBookings(sheet, db.bookings || []);
+    sheet.hideColumns(1);
+    sheet.hideColumns(8, 3);
+    p.setProperty('BOOKING_SHEET_ID', spreadsheet.getId());
+  }
+  db.bookings = [];
+  dataFile.setContent(JSON.stringify(db));
   if (!p.getProperty('ADMIN_PASSWORD')) p.setProperty('ADMIN_PASSWORD', Utilities.getUuid());
-  console.log('Thiết lập xong. Xem ADMIN_PASSWORD và DATA_FILE_ID trong Project Settings > Script properties.');
+  console.log('Thiết lập xong. Mở Google Sheet “Lịch đăng ký tập xe Chiến Thắng” để xem đăng ký.');
 }
 function doGet() { return HtmlService.createHtmlOutputFromFile('Index').setTitle('Trung tâm đào tạo và sát hạch lái xe Chiến Thắng - Tiền Giang · Đặt lịch tập xe').addMetaTag('viewport', 'width=device-width, initial-scale=1'); }
 function api(action, payload) {
@@ -19,9 +60,13 @@ function api(action, payload) {
   lock.waitLock(30000);
   try {
     var p = PropertiesService.getScriptProperties();
-    if (!p.getProperty('DATA_FILE_ID')) throw new Error('Quản trị cần chạy setup() trước.');
+    if (!p.getProperty('DATA_FILE_ID') || !p.getProperty('BOOKING_SHEET_ID')) throw new Error('Quản trị cần chạy setup() trước.');
     var file = DriveApp.getFileById(p.getProperty('DATA_FILE_ID'));
     var db = JSON.parse(file.getBlob().getDataAsString());
+    db.vehicles = db.vehicles.map(function(v) { return {id:v.id, category:v.category, name:vehiclePlate(v.category, v.name)}; });
+    var sheet = SpreadsheetApp.openById(p.getProperty('BOOKING_SHEET_ID')).getSheetByName('Đăng ký');
+    if (!sheet) throw new Error('Không tìm thấy trang tính Đăng ký.');
+    db.bookings = readBookings(sheet);
     var admin = payload.password && payload.password === p.getProperty('ADMIN_PASSWORD');
     if (['admin','vehicle','slot','deleteBooking'].indexOf(action) >= 0 && !admin) throw new Error('Mật khẩu quản trị không đúng.');
     if (action === 'book') {
@@ -37,10 +82,13 @@ function api(action, payload) {
         if (db.bookings.some(function(x){return x.date === b.date && x.vehicleId === b.vehicleId && x.slotId === id;})) throw new Error('Xe vừa được đặt trong khung giờ này. Hãy chọn lại.');
       });
       var vehicle = db.vehicles.find(function(v){return v.id === b.vehicleId;});
+      var newBookings = [];
       b.slotIds.forEach(function(id) {
         var slot = db.slots.find(function(s){return s.id === id;});
-        db.bookings.push({id:Utilities.getUuid(), name:b.name.trim(), teacher:b.teacher.trim(), date:b.date, vehicleId:b.vehicleId, vehicleName:vehicle.name, category:vehicle.category, slotId:id, start:slot.start, end:slot.end, createdAt:new Date().toISOString()});
+        newBookings.push({id:Utilities.getUuid(), name:b.name.trim(), teacher:b.teacher.trim(), date:b.date, vehicleId:b.vehicleId, vehicleName:vehicle.name, category:vehicle.category, slotId:id, start:slot.start, end:slot.end, createdAt:new Date().toISOString()});
       });
+      appendBookings(sheet, newBookings);
+      db.bookings = db.bookings.concat(newBookings);
     } else if (action === 'vehicle' || action === 'slot') {
       var list = action === 'vehicle' ? db.vehicles : db.slots;
       var item = payload.item || {};
@@ -63,9 +111,10 @@ function api(action, payload) {
         if (idx >= 0) list[idx] = clean; else list.push(clean);
       }
     } else if (action === 'deleteBooking') {
+      deleteBookingRow(sheet, payload.id);
       db.bookings = db.bookings.filter(function(b){return b.id !== payload.id;});
     } else if (action !== 'state' && action !== 'admin') throw new Error('Yêu cầu không hợp lệ.');
-    if (['state','admin'].indexOf(action) < 0) file.setContent(JSON.stringify(db));
+    if (action === 'vehicle' || action === 'slot') file.setContent(JSON.stringify({vehicles:db.vehicles, slots:db.slots, bookings:[]}));
     return {vehicles:db.vehicles, slots:db.slots.sort(function(a,b){return a.start.localeCompare(b.start);}), bookings:admin ? db.bookings : db.bookings.map(function(b){return {date:b.date, vehicleId:b.vehicleId, slotId:b.slotId};})};
   } finally { lock.releaseLock(); }
 }

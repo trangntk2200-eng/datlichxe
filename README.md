@@ -1,6 +1,6 @@
 # Website đặt lịch tập xe
 
-Hai màn hình tiếng Việt, dùng Google Apps Script và tệp JSON riêng trong Google Drive của chủ ứng dụng. Không cần Node.js hoặc máy chủ riêng.
+Hai màn hình tiếng Việt, dùng Google Apps Script; lịch đăng ký được lưu vào Google Sheets, còn xe và khung giờ được lưu trong tệp JSON riêng trên Google Drive của chủ ứng dụng.
 
 ## Chạy chính thức trên Google Drive
 
@@ -8,8 +8,8 @@ Hai màn hình tiếng Việt, dùng Google Apps Script và tệp JSON riêng tr
 2. Chép nội dung `Code.gs` vào tệp Code.gs trong dự án.
 3. Tạo tệp HTML tên **Index**, chép nội dung `Index.html` vào.
 4. Trong Project Settings, bật hiển thị manifest `appsscript.json`, thay bằng nội dung tệp cùng tên trong thư mục này.
-5. Chạy hàm **setup** một lần và cấp quyền Drive. Hàm tạo tệp `dat-lich-xe.json`, 5 xe B.01, 7 xe B và 7 xe C1, cùng giờ 06:00–07:00 và 07:00–08:00. Chạy lại không xóa dữ liệu.
-6. Trong Project Settings → Script properties, xem `DATA_FILE_ID` và đổi `ADMIN_PASSWORD` thành mật khẩu mạnh của bạn. Không chia sẻ mật khẩu cho học viên.
+5. Chạy hàm **setup** một lần và cấp quyền Drive, Sheets. Hàm tạo tệp `dat-lich-xe.json` cho xe/giờ và Google Sheet `Lịch đăng ký tập xe Chiến Thắng` cho lịch đăng ký. Xe mặc định gồm 5 xe B.01, 7 xe B, 7 xe C1; giờ 06:00–07:00 và 07:00–08:00. Khi có dữ liệu JSON cũ, setup chuyển các lịch hiện có sang Sheet một lần.
+6. Trong Project Settings → Script properties, giữ `DATA_FILE_ID` và `BOOKING_SHEET_ID`; đặt `ADMIN_PASSWORD` thành mật khẩu mạnh. Không chia sẻ mật khẩu cho học viên.
 7. Deploy → New deployment → Web app. Chọn **Execute as: Me**, **Who has access: Anyone** để học viên không phải đăng nhập. Bấm Deploy và gửi đường dẫn `/exec` cho học viên. Tùy chính sách Workspace, quản trị Google có thể không cho phép truy cập ẩn danh.
 8. Mở cùng đường dẫn, chọn **Quản trị**, nhập mật khẩu đã cấu hình.
 
@@ -26,7 +26,7 @@ Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng lo
 - Quản trị xem và lọc toàn bộ lịch, xuất CSV, hủy lượt đặt, thêm/sửa/xóa xe và khung giờ. Khung giờ không được chồng lấn. Mỗi khung giờ được tính là một lượt đặt.
 - Chặn xóa xe/khung giờ có lịch từ hôm nay trở đi; chặn sửa khung giờ đang có lịch. Tên xe, hạng và thời gian trong lịch cũ được giữ như lúc đăng ký để bảo toàn lịch sử.
 - Tự làm mới mỗi 30 giây. Mật khẩu quản trị chỉ giữ trong bộ nhớ của tab, được kiểm tra ở máy chủ mỗi yêu cầu quản trị.
-- Tệp Drive được giữ riêng tư; không cần bật chia sẻ công khai. Sao lưu bằng cách tải bản sao tệp JSON từ Drive. Không sửa tệp thủ công khi ứng dụng đang được sử dụng.
+- Sheet lưu các trường `Ngày tập`, `Giờ tập`, `Học viên`, `Thầy`, `Hạng xe`, `Biển số xe`; các mã nội bộ được ẩn. Tệp Drive chỉ giữ xe và khung giờ. Giữ cả Sheet và tệp JSON riêng tư; không cần bật chia sẻ công khai.
 
 ## Giới hạn triển khai
 
