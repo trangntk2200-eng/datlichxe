@@ -1,5 +1,20 @@
 /* Chạy setup() một lần trước khi triển khai ứng dụng web. */
 var BOOKING_HEADERS = ['Mã đăng ký', 'Ngày tập', 'Giờ tập', 'Học viên', 'Thầy', 'Hạng xe', 'Biển số xe', 'Mã xe', 'Mã khung giờ', 'Thời điểm đăng ký'];
+var TARGET_BOOKING_SHEET_ID = '19xq611MGY32ztxaOQ1ekJwogb8CisCwAJD9byqm_xlQ';
+function targetBookingSheet(initialize) {
+  var spreadsheet = SpreadsheetApp.openById(TARGET_BOOKING_SHEET_ID);
+  var sheet = spreadsheet.getSheets().find(function(s) { return s.getSheetId() === 0; });
+  if (!sheet) throw new Error('Không tìm thấy trang tính gid=0 trong bảng đăng ký.');
+  if (sheet.getLastRow() === 0 && initialize) {
+    sheet.getRange(1, 1, 1, BOOKING_HEADERS.length).setValues([BOOKING_HEADERS]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    sheet.hideColumns(1);
+    sheet.hideColumns(8, 3);
+  }
+  var headers = sheet.getRange(1, 1, 1, BOOKING_HEADERS.length).getValues()[0];
+  if (headers.some(function(h, i) { return h !== BOOKING_HEADERS[i]; })) throw new Error('Trang tính gid=0 chưa có đúng tiêu đề cột. Sao lưu dữ liệu sẵn có và chạy setup() trên trang tính trống; ứng dụng không ghi đè dữ liệu khác.');
+  return sheet;
+}
 function vehiclePlate(category, name) {
   var prefix = category + ' · ';
   name = String(name || '');
@@ -17,7 +32,11 @@ function readBookings(sheet) {
 }
 function appendBookings(sheet, bookings) {
   if (!bookings.length) return;
-  sheet.getRange(sheet.getLastRow() + 1, 1, bookings.length, BOOKING_HEADERS.length).setValues(bookings.map(bookingToRow));
+  var rows = bookings.map(bookingToRow).map(function(row) {
+    return row.map(function(value) { return typeof value === 'string' && /^[=+@-]/.test(value) ? "'" + value : value; });
+  });
+  sheet.getRange(sheet.getLastRow() + 1, 1, bookings.length, BOOKING_HEADERS.length).setNumberFormat('@').setValues(rows);
+  SpreadsheetApp.flush();
 }
 function deleteBookingRow(sheet, id) {
   if (sheet.getLastRow() < 2) return;
@@ -25,7 +44,11 @@ function deleteBookingRow(sheet, id) {
   for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) sheet.deleteRow(i + 2);
 }
 function setup() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
   var p = PropertiesService.getScriptProperties();
+  var sheet = targetBookingSheet(true);
   if (!p.getProperty('DATA_FILE_ID')) {
     var vehicles = [];
     ['B.01', 'B', 'C1'].forEach(function(c, j) {
@@ -37,23 +60,39 @@ function setup() {
   var dataFile = DriveApp.getFileById(p.getProperty('DATA_FILE_ID'));
   var db = JSON.parse(dataFile.getBlob().getDataAsString());
   db.vehicles = db.vehicles.map(function(v) { return {id:v.id, category:v.category, name:vehiclePlate(v.category, v.name)}; });
-  if (!p.getProperty('BOOKING_SHEET_ID')) {
-    var spreadsheet = SpreadsheetApp.create('Lịch đăng ký tập xe Chiến Thắng');
-    var sheet = spreadsheet.getSheets()[0];
-    sheet.setName('Đăng ký');
-    sheet.getRange(1, 1, 1, BOOKING_HEADERS.length).setValues([BOOKING_HEADERS]).setFontWeight('bold');
-    sheet.setFrozenRows(1);
-    appendBookings(sheet, db.bookings || []);
-    sheet.hideColumns(1);
-    sheet.hideColumns(8, 3);
-    p.setProperty('BOOKING_SHEET_ID', spreadsheet.getId());
+  var previousId = p.getProperty('BOOKING_SHEET_ID');
+  var previousBookings = db.bookings || [];
+  if (previousId && previousId !== TARGET_BOOKING_SHEET_ID) {
+    var previousSheet = SpreadsheetApp.openById(previousId).getSheetByName('Đăng ký');
+    if (!previousSheet) throw new Error('Không tìm thấy trang Đăng ký trong Sheet cũ. Chưa chuyển dữ liệu.');
+    previousBookings = previousBookings.concat(readBookings(previousSheet));
   }
+  var existingIds = new Set(readBookings(sheet).map(function(b) { return b.id; }));
+  var migrate = previousBookings.filter(function(b) {
+    if (existingIds.has(b.id)) return false;
+    existingIds.add(b.id);
+    return true;
+  });
+  appendBookings(sheet, migrate);
+  p.setProperty('BOOKING_SHEET_ID', TARGET_BOOKING_SHEET_ID);
   db.bookings = [];
   dataFile.setContent(JSON.stringify(db));
   if (!p.getProperty('ADMIN_PASSWORD')) p.setProperty('ADMIN_PASSWORD', Utilities.getUuid());
-  console.log('Thiết lập xong. Mở Google Sheet “Lịch đăng ký tập xe Chiến Thắng” để xem đăng ký.');
+  console.log('Thiết lập xong. Lịch đăng ký lưu tại https://docs.google.com/spreadsheets/d/' + TARGET_BOOKING_SHEET_ID + '/edit#gid=0. Đã chuyển ' + migrate.length + ' lượt cũ.');
+  } finally { lock.releaseLock(); }
 }
 function doGet() { return HtmlService.createHtmlOutputFromFile('Index').setTitle('Trung tâm đào tạo và sát hạch lái xe Chiến Thắng - Tiền Giang · Đặt lịch tập xe').addMetaTag('viewport', 'width=device-width, initial-scale=1'); }
+function doPost(e) {
+  var result;
+  try {
+    var request = JSON.parse(e && e.postData && e.postData.contents || '{}');
+    if (!request.action) throw new Error('Yêu cầu không hợp lệ.');
+    result = api(request.action, request.payload || {});
+  } catch (error) {
+    result = {error:error && error.message ? error.message : 'Không thể xử lý yêu cầu.'};
+  }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
 function api(action, payload) {
   payload = payload || {};
   var lock = LockService.getScriptLock();
@@ -64,8 +103,8 @@ function api(action, payload) {
     var file = DriveApp.getFileById(p.getProperty('DATA_FILE_ID'));
     var db = JSON.parse(file.getBlob().getDataAsString());
     db.vehicles = db.vehicles.map(function(v) { return {id:v.id, category:v.category, name:vehiclePlate(v.category, v.name)}; });
-    var sheet = SpreadsheetApp.openById(p.getProperty('BOOKING_SHEET_ID')).getSheetByName('Đăng ký');
-    if (!sheet) throw new Error('Không tìm thấy trang tính Đăng ký.');
+    if (p.getProperty('BOOKING_SHEET_ID') !== TARGET_BOOKING_SHEET_ID) throw new Error('Quản trị cần chạy setup() để kết nối bảng Google Sheets mới.');
+    var sheet = targetBookingSheet(false);
     db.bookings = readBookings(sheet);
     var admin = payload.password && payload.password === p.getProperty('ADMIN_PASSWORD');
     if (['admin','vehicle','slot','deleteBooking'].indexOf(action) >= 0 && !admin) throw new Error('Mật khẩu quản trị không đúng.');

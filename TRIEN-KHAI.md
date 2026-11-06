@@ -6,7 +6,7 @@
 
 1. Mở https://script.google.com/home/start bằng tài khoản Google sở hữu dữ liệu của trung tâm. Đặt tên dự án **Đặt lịch xe Chiến Thắng - Tiền Giang**.
 2. Mở `TrienKhai.gs` trong VS Code, nhấn Ctrl+A rồi Ctrl+C. Trong Code.gs của dự án Google, xóa mã mẫu, dán mã vừa sao chép và lưu. Không dán thêm Code.gs hoặc Index.html từ máy vào cùng dự án này.
-3. Chọn hàm **setup** trên thanh công cụ, nhấn **Run / Chạy**. Cấp quyền Google Drive và Google Sheets. Hàm tạo Sheet `Lịch đăng ký tập xe Chiến Thắng`, chuyển đăng ký cũ từ JSON sang Sheet một lần, rồi tiếp tục lưu lịch mới vào Sheet.
+3. Chọn hàm **setup** trên thanh công cụ, nhấn **Run / Chạy**. Cấp quyền Google Drive và Google Sheets. Tài khoản chạy phải có quyền chỉnh sửa bảng https://docs.google.com/spreadsheets/d/19xq611MGY32ztxaOQ1ekJwogb8CisCwAJD9byqm_xlQ/edit#gid=0. Hàm kết nối trang tính gid=0, tạo tiêu đề nếu trống và chuyển lịch từ JSON/Sheet cũ sang đây, không lặp lại mã đã chuyển. Nếu tab có nội dung khác cấu trúc, hàm dừng để tránh ghi đè: sao lưu và chuyển nội dung cũ sang tab khác trước khi chuẩn bị tab gid=0 trống.
 4. Mở **Project Settings / Cài đặt dự án → Script properties / Thuộc tính tập lệnh**. Giữ nguyên DATA_FILE_ID và BOOKING_SHEET_ID. Đặt ADMIN_PASSWORD riêng và lưu lại. Không gửi mật khẩu hoặc mã đăng nhập Google qua chat.
 5. Nhấn **Deploy / Triển khai → New deployment / Triển khai mới**. Chọn biểu tượng bánh răng → **Web app / Ứng dụng web**.
 6. Chọn **Execute as / Thực thi dưới dạng: Me / Tôi** và **Who has access / Ai có quyền truy cập: Anyone / Bất kỳ ai**. Nhấn **Deploy / Triển khai**, hoàn tất cấp quyền nếu được yêu cầu.
@@ -21,6 +21,8 @@
 - Thử hai cửa sổ đặt cùng xe/giờ: chỉ một yêu cầu được chấp nhận.
 
 ## Cập nhật sau này
+
+Với website đang chạy Netlify: dán lại `TrienKhai.gs` vào dự án Apps Script hiện có, lưu và chạy `setup()` để chuyển bảng lưu dữ liệu. Mỗi khung giờ đã đặt tạo một dòng trong Sheet đích; hai giờ tạo hai dòng. Dữ liệu cũ ở Sheet nguồn được giữ nguyên. Chỉ cập nhật Netlify sẽ không thay đổi máy chủ Apps Script.
 
 Thay mã trong dự án, lưu, rồi chọn **Deploy → Manage deployments → Edit → Version: New version → Deploy** để giữ nguyên liên kết học viên đang sử dụng. Không xóa DATA_FILE_ID hoặc tạo tệp dữ liệu mới khi chỉ cập nhật giao diện.
 

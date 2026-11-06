@@ -8,7 +8,7 @@ Hai màn hình tiếng Việt, dùng Google Apps Script; lịch đăng ký đư�
 2. Chép nội dung `Code.gs` vào tệp Code.gs trong dự án.
 3. Tạo tệp HTML tên **Index**, chép nội dung `Index.html` vào.
 4. Trong Project Settings, bật hiển thị manifest `appsscript.json`, thay bằng nội dung tệp cùng tên trong thư mục này.
-5. Chạy hàm **setup** một lần và cấp quyền Drive, Sheets. Hàm tạo tệp `dat-lich-xe.json` cho xe/giờ và Google Sheet `Lịch đăng ký tập xe Chiến Thắng` cho lịch đăng ký. Xe mặc định gồm 5 xe B.01, 7 xe B, 7 xe C1; giờ 06:00–07:00 và 07:00–08:00. Khi có dữ liệu JSON cũ, setup chuyển các lịch hiện có sang Sheet một lần.
+5. Chạy hàm **setup** và cấp quyền Drive, Sheets. Hàm tạo tệp `dat-lich-xe.json` cho xe/giờ và kết nối [bảng đăng ký của trung tâm](https://docs.google.com/spreadsheets/d/19xq611MGY32ztxaOQ1ekJwogb8CisCwAJD9byqm_xlQ/edit#gid=0), trang tính `gid=0`. Tài khoản chạy Apps Script phải có quyền chỉnh sửa bảng này. Xe mặc định gồm 5 xe B.01, 7 xe B, 7 xe C1; giờ 06:00–07:00 và 07:00–08:00. Setup chuyển lịch từ JSON và Sheet cũ (nếu có BOOKING_SHEET_ID), không thêm lại mã đăng ký đã chuyển. Sheet cũ được giữ nguyên.
 6. Trong Project Settings → Script properties, giữ `DATA_FILE_ID` và `BOOKING_SHEET_ID`; đặt `ADMIN_PASSWORD` thành mật khẩu mạnh. Không chia sẻ mật khẩu cho học viên.
 7. Deploy → New deployment → Web app. Chọn **Execute as: Me**, **Who has access: Anyone** để học viên không phải đăng nhập. Bấm Deploy và gửi đường dẫn `/exec` cho học viên. Tùy chính sách Workspace, quản trị Google có thể không cho phép truy cập ẩn danh.
 8. Mở cùng đường dẫn, chọn **Quản trị**, nhập mật khẩu đã cấu hình.
@@ -32,6 +32,12 @@ Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng lo
 
 Ứng dụng cần chủ tài khoản tự cấp quyền Google Drive và triển khai Apps Script theo hướng dẫn trên; mã nguồn chưa phải một website đã xuất bản. Apps Script và Drive chịu hạn mức Google, phù hợp trung tâm nhỏ; mật khẩu dùng chung không có tài khoản riêng hoặc nhật ký từng quản trị viên. Giao diện xem thử không thay thế kiểm tra hai thiết bị đồng thời sau triển khai. Phông chữ dùng Google Fonts và có phông hệ thống dự phòng.
 
-## Bản demo trên Netlify
+## Deploy Netlify
 
-Netlify phục vụ bản tĩnh trong `public/`. Khi chạy ngoài Apps Script, giao diện dùng `localStorage` và mật khẩu demo `12345678`; dữ liệu chỉ có trên trình duyệt hiện tại, không đồng bộ giữa người dùng và không lưu vào Drive. Không dùng link Netlify để nhận lịch thật; dùng URL `/exec` của Apps Script ở trên.
+Netlify phục vụ giao diện trong `public/` và dùng Function tại `netlify/functions/api.js` để chuyển API tới Apps Script `/exec`. Đăng ký từ link Netlify được lưu vào bảng `19xq611MGY32ztxaOQ1ekJwogb8CisCwAJD9byqm_xlQ`, trang tính `gid=0`; quản trị cũng đọc và cập nhật cùng dữ liệu. Mỗi khung giờ là một dòng; chọn hai khung giờ tạo hai dòng. Không lưu lịch Netlify trong `localStorage`.
+
+Để áp dụng thay đổi đích lưu dữ liệu, cập nhật mã Apps Script bằng `TrienKhai.gs`, chạy `setup()`, sau đó **Triển khai → Quản lý các tùy chọn triển khai → Chỉnh sửa → Phiên bản mới → Triển khai**. Cập nhật deployment hiện tại để giữ nguyên URL mà Netlify đang gọi; chỉ sửa tệp trên máy hoặc deploy lại Netlify sẽ không cập nhật mã Apps Script. Nếu tạo deployment mới, phải thay URL trong `netlify/functions/api.js` và deploy lại Netlify.
+
+Nếu trang tính `gid=0` đang trống, setup tạo tiêu đề tự động. Nếu đã có nội dung khác cấu trúc 10 cột của ứng dụng, setup dừng và không ghi đè: sao lưu/chuyển nội dung sẵn có sang tab khác rồi chuẩn bị tab `gid=0` trống trước khi chạy lại. Không xóa dữ liệu đang sử dụng mà chưa sao lưu. Các đăng ký đã bị xóa/hủy trước đó không được khôi phục bởi bước chuyển dữ liệu.
+
+Khi chạy `Index.html` trực tiếp trên máy, không có Netlify Function hay Apps Script nên chỉ khi đó giao diện mới dùng `localStorage` để xem thử. Chế độ này không đồng bộ dữ liệu.
