@@ -17,7 +17,7 @@ Khi cập nhật mã: Deploy → Manage deployments → Edit → New version →
 
 ## Xem giao diện trên máy
 
-Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng localStorage, mật khẩu **demo123**; dữ liệu không đồng bộ giữa các máy và không đưa lên Drive. Không dùng chế độ này để tiếp nhận đăng ký thật. Nếu trình duyệt hạn chế localStorage cho tệp mở trực tiếp, cần mở qua một máy chủ HTTP tĩnh.
+Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng localStorage, mật khẩu **12345678**; dữ liệu không đồng bộ giữa các máy và không đưa lên Drive. Không dùng chế độ này để tiếp nhận đăng ký thật. Nếu trình duyệt hạn chế localStorage cho tệp mở trực tiếp, cần mở qua một máy chủ HTTP tĩnh.
 
 ## Chức năng
 
@@ -34,4 +34,4 @@ Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng lo
 
 ## Bản demo trên Netlify
 
-Netlify phục vụ bản tĩnh trong `public/`. Khi chạy ngoài Apps Script, giao diện dùng `localStorage` và mật khẩu demo `demo123`; dữ liệu chỉ có trên trình duyệt hiện tại, không đồng bộ giữa người dùng và không lưu vào Drive. Không dùng link Netlify để nhận lịch thật; dùng URL `/exec` của Apps Script ở trên.
+Netlify phục vụ bản tĩnh trong `public/`. Khi chạy ngoài Apps Script, giao diện dùng `localStorage` và mật khẩu demo `12345678`; dữ liệu chỉ có trên trình duyệt hiện tại, không đồng bộ giữa người dùng và không lưu vào Drive. Không dùng link Netlify để nhận lịch thật; dùng URL `/exec` của Apps Script ở trên.
