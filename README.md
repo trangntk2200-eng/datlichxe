@@ -31,3 +31,7 @@ Mở `Index.html` trong trình duyệt. Đây là chế độ xem thử dùng lo
 ## Giới hạn triển khai
 
 Ứng dụng cần chủ tài khoản tự cấp quyền Google Drive và triển khai Apps Script theo hướng dẫn trên; mã nguồn chưa phải một website đã xuất bản. Apps Script và Drive chịu hạn mức Google, phù hợp trung tâm nhỏ; mật khẩu dùng chung không có tài khoản riêng hoặc nhật ký từng quản trị viên. Giao diện xem thử không thay thế kiểm tra hai thiết bị đồng thời sau triển khai. Phông chữ dùng Google Fonts và có phông hệ thống dự phòng.
+
+## Bản demo trên Netlify
+
+Netlify phục vụ bản tĩnh trong `public/`. Khi chạy ngoài Apps Script, giao diện dùng `localStorage` và mật khẩu demo `demo123`; dữ liệu chỉ có trên trình duyệt hiện tại, không đồng bộ giữa người dùng và không lưu vào Drive. Không dùng link Netlify để nhận lịch thật; dùng URL `/exec` của Apps Script ở trên.
